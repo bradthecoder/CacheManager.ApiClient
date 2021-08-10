@@ -1,0 +1,121 @@
+# https://docs.microsoft.com/en-us/azure/devops/pipelines/yaml-schema
+#name: PipelineName
+trigger:
+- master
+# - develop
+# - feature/*
+# - bugfix/*
+# - release/*
+
+# pr:
+# - master
+
+stages:
+
+- stage: BUILD
+  displayName: 'BUILD'
+  jobs:
+  - job: 
+    displayName: 'Build_Job'
+    pool:
+      vmImage: 'windows-latest'
+    timeoutInMinutes: 10
+    steps:
+
+    #- bash: echo "Hello world"
+    #  displayName: 'Hello_World'
+
+    - task: UseDotNet@2
+      displayName: 'Use .NET 5.x sdk'
+      inputs:
+        version: 5.x
+
+    - task: DotNetCoreCLI@2
+      displayName: 'dotnet restore'
+      inputs:
+        command: restore
+        projects: '**/*.csproj'
+      enabled: true
+
+    - task: DotNetCoreCLI@2
+      displayName: 'dotnet build'
+      inputs:
+        projects: '**/*.csproj'
+        arguments: '--no-restore --configuration Release'
+      enabled: true
+
+    - task: DotNetCoreCLI@2
+      displayName: 'dotnet test'
+      inputs:
+        command: test
+        projects: 'test/**/*.csproj'
+        publishTestResults: true
+        arguments: '--no-restore --configuration Release --collect "Code coverage"'
+      continueOnError: true
+      enabled: false
+
+    - task: DotNetCoreCLI@2
+      displayName: 'dotnet publish'
+      inputs:
+        command: publish
+        publishWebProjects: True
+        projects: 'src/**/*.csproj'
+        arguments: '--no-restore --configuration Release --output $(build.artifactstagingdirectory)'
+        zipAfterPublish: True
+      enabled: true
+
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Artifact'
+      inputs:
+        PathtoPublish: '$(build.artifactstagingdirectory)'
+      condition: succeeded()
+      enabled: true
+
+#- stage: DEVELOPMENT
+#  displayName: 'DEVELOPMENT'
+#  jobs:
+#  - deployment:
+#    displayName: 'Deployment'
+#    environment: 'ENV-DEVELOPMENT'
+#    continueOnError: false
+#    pool:
+#      vmImage: 'ubuntu-16.04'
+#    strategy:
+#      runOnce:
+#        deploy: 
+#          steps:
+#          - bash: echo "Deploy to DEVELOPMENT"
+
+#- stage: STAGING
+#  displayName: 'STAGING'
+#  dependsOn: DEVELOPMENT
+#  condition: succeeded()
+#  jobs:
+#  - deployment:
+#    displayName: 'Deployment'
+#    environment: 'ENV-STAGING'
+#    continueOnError: false
+#    pool:
+#      vmImage: 'ubuntu-16.04'
+#    strategy:
+#      runOnce:
+#        deploy: 
+#          steps:
+#          - bash: echo "Deploy to STAGING"
+
+#- stage: PRODUCTION
+#  displayName: 'PRODUCTION'
+#  dependsOn: STAGING
+#  condition: succeeded()
+#  jobs:
+#  - deployment:
+#    displayName: 'Deployment'
+#    environment: 'ENV-PRODUCTION'
+#    continueOnError: false
+#    pool:
+#      vmImage: 'ubuntu-16.04'
+#    strategy:
+#      runOnce:
+#        deploy: 
+#          steps:
+#          - bash: echo "Deploy to PRODUCTION"
